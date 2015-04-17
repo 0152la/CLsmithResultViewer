@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 from loadresults import ParseData
+import filterresults
 
 import os
 import subprocess
@@ -63,7 +64,7 @@ class Analyzer(Screen):
     platforms.bind(on_select = lambda instance, x: setattr(self.plat_btn, 'text', x))
 
     test_filter = DropDown()
-    for filter_type in ["None", "Matching", "Different"]:
+    for filter_type in ["None", "Matching", "MatchingPlat"]:
       btn = Button(text = filter_type, size_hint_y = None, height = 33)
       btn.bind(on_release = lambda btn: self.SetFilter(btn.text, test_filter))
       test_filter.add_widget(btn)
@@ -124,7 +125,12 @@ class Analyzer(Screen):
         self.ChangeResults()
 
   def FilterProgs(self, filter_type):
-    return sorted(self.sample.keys())
+    if filter_type == "None":
+        return sorted(self.sample.keys())
+    elif filter_type == "Matching" or (filter_type == "MatchingPlat" and self.res_plt in ["Sample", ""]):
+        return filterresults.FilterMatching(self.sample, self.contents, self.plat_btn.text)
+    elif filter_type == "MatchingPlat":
+        return fitlerresults.FilterPlat(self.contents, self.plat_btn.text, self.res_plt)
 
   def SetResults(self):
     plat_select = DropDown()
