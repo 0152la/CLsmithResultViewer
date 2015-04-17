@@ -1,0 +1,90 @@
+#:kivy 1.7.2
+
+<Browser>:
+  dir_box: dir_box
+  file_chooser: file_chooser
+
+  BoxLayout:
+    orientation: "vertical"
+    size: root.size
+
+    BoxLayout:
+      size: self.parent.width, 33
+      size_hint: 1, None
+
+      Label:
+        text: "Target directory:"
+        size_hint: None, 1
+        width: 150
+
+      TextInput:
+        id: dir_box
+        readonly: True
+
+      Button:
+        text: "Select"
+        size_hint: None, 1
+        width: 75
+        on_release: root.SelectDir()
+
+      Button:
+        text: "Okay"
+        size_hint: None, 1
+        width: 75
+        on_release: root.ChooseDir()
+
+    FileChooserListView:
+      id: file_chooser
+      dirselect: True
+
+<Analyzer>:
+  plat_btn: plat_btn
+  filter_btn: filter_btn
+  prog_ipt: prog_ipt
+  result_view: result_view
+
+  BoxLayout:
+    orientation: "vertical"
+    size: root.size
+    size_hint: None, None
+
+    BoxLayout:
+      size: self.parent.width, 33
+      size_hint: None, None
+
+      Button:
+        id: filter_btn
+        text: "Filter..."
+        size_hint: 0.25, 1
+
+      Button:
+        id: plat_btn
+        text: "Platform..."
+        size_hint: 0.75, 1
+
+    BoxLayout:
+      size: self.parent.width, 33
+      size_hint: None, None
+
+      Button:
+        text: "<"
+        size_hint: 0.1, 1
+        on_release: root.GoPrev()
+
+      TextInput:
+        id: prog_ipt
+        text: "N/A"
+        readonly: True
+        multiline: False
+        on_text_validate: root.GoProg(self.text)
+
+      Button:
+        text: ">"
+        size_hint: 0.1, 1
+        on_release: root.GoNext()
+
+    BoxLayout:
+      id: result_view
+      orientation: "vertical"
+      size: self.parent.width, self.parent.height
+
