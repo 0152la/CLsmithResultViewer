@@ -11,3 +11,6 @@ def FilterPlat(contents, target, filter_plat):
     if contents[program][target] != contents[program][filter_plat]:
       filtered_progs.append(program)
   return sorted(filtered_progs)
+
+def OutputHTML(prog_list, sample, contents):
+  print("hi")

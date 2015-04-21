@@ -32,6 +32,8 @@ class Browser(Screen):
           self.dir_box.text = self.file_chooser.selection[0]
 
   def ChooseDir(self):
+      analyzer_instance = Analyzer(name="analyzer")
+      self.manager.add_widget(analyzer_instance)
       self.manager.current = "analyzer"
       self.manager.current_screen.Initialize(self.dir_box.text)
 
@@ -51,6 +53,7 @@ class Analyzer(Screen):
   res_cmp = ObjectProperty(None)
   res_plt = ""
   res_slt = ObjectProperty(None)
+  cnt_lbl = ObjectProperty(None)
 
   def Initialize(self, path):
     self.sample, self.contents = ParseData(path)
@@ -73,6 +76,8 @@ class Analyzer(Screen):
 
   def SetPlatform(self, platform, dropdown):
     dropdown.select(platform)
+    if self.filter_btn.text == "MatchingPlat":
+      self.prog_list = self.FilterProgs("MatchingPlat")
     if self.res_plt:
       self.prog_ipt.text = self.prog_list[0]
       self.curr_idx = 0
@@ -82,8 +87,9 @@ class Analyzer(Screen):
       self.SetResults()
       self.curr_idx = 0
 
-  def SetFilter(self, filter_type, dropdown):
-    dropdown.select(filter_type)
+  def SetFilter(self, filter_type, dropdown = None):
+    if dropdown:
+      dropdown.select(filter_type)
     self.prog_list = self.FilterProgs(filter_type)
     if self.res_plt:
       self.prog_ipt.text = self.prog_list[0]
@@ -125,12 +131,12 @@ class Analyzer(Screen):
         self.ChangeResults()
 
   def FilterProgs(self, filter_type):
-    if filter_type == "None":
+    if filter_type == "None" or self.plat_btn.text == "Platform...":
         return sorted(self.sample.keys())
     elif filter_type == "Matching" or (filter_type == "MatchingPlat" and self.res_plt in ["Sample", ""]):
         return filterresults.FilterMatching(self.sample, self.contents, self.plat_btn.text)
     elif filter_type == "MatchingPlat":
-        return fitlerresults.FilterPlat(self.contents, self.plat_btn.text, self.res_plt)
+        return filterresults.FilterPlat(self.contents, self.plat_btn.text, self.res_plt)
 
   def SetResults(self):
     plat_select = DropDown()
@@ -143,16 +149,27 @@ class Analyzer(Screen):
     plat_select.bind(on_select = lambda instance, x: self.ChangeResults(x))
 
     btn_layout = BoxLayout(orientation = "horizontal", size_hint_y = None, height = 33)
-    lbl_compare = Label(markup = True, size_hint_y = None, size_hint_x = 0.10, height = 33)
+    lbl_compare = Label(markup = True, size_hint_x = 0.10)
     lbl_compare.text = self.GetComparison(self.plat_btn.text, plat_select_btn.text)
     diff_ipt = TextInput(text = self.sample[self.prog_list[self.curr_idx]], readonly = True)
     res_ipt = TextInput(text = self.contents[self.prog_list[self.curr_idx]][self.plat_btn.text], readonly = True)
+
+    btn_layout_bot = BoxLayout(orientation = "horizontal", size_hint_y = None, height = 33)
+    cnt_lbl = Label(text = str(self.curr_idx + 1) + " / " + str(len(self.prog_list)), size_hint_x = 0.5)
+    gen_btn = Button(text = "Output HTML", size_hint_x = 0.25)
+    gen_btn.bind(on_release = lambda btn: filterresults.OutputHTML(self.prog_list, self.sample, self.contents))
+    back_btn = Button(text = "Back", size_hint_x = 0.25)
+    back_btn.bind(on_release = lambda btn: self.SwitchScreen())
+    btn_layout_bot.add_widget(cnt_lbl)
+    btn_layout_bot.add_widget(gen_btn)
+    btn_layout_bot.add_widget(back_btn)
 
     btn_layout.add_widget(lbl_compare)
     btn_layout.add_widget(plat_select_btn)
     self.result_view.add_widget(res_ipt)
     self.result_view.add_widget(btn_layout)
     self.result_view.add_widget(diff_ipt)
+    self.result_view.add_widget(btn_layout_bot)
 
     self.res_plt = plat_select_btn.text
     self.res_ipt = res_ipt
@@ -160,17 +177,23 @@ class Analyzer(Screen):
     self.res_cmp = lbl_compare
     self.res_slt = plat_select_btn
     self.prog_ipt.readonly = False
+    self.cnt_lbl = cnt_lbl
 
   def ChangeResults(self, diff_plat = ""):
     if diff_plat:
         self.res_plt = diff_plat
         self.res_slt.text = diff_plat
+        if self.filter_btn.text == "MatchingPlat":
+            self.prog_list = self.FilterProgs("MatchingPlat")
+            self.prog_ipt.text = self.prog_list[0]
+            self.curr_idx = 0
     self.res_cmp.text = self.GetComparison(self.plat_btn.text, self.res_plt)
     self.res_ipt.text = self.contents[self.prog_list[self.curr_idx]][self.plat_btn.text]
     if self.res_plt == "Sample":
         self.res_dff.text = self.sample[self.prog_list[self.curr_idx]]
     else:
         self.res_dff.text = self.contents[self.prog_list[self.curr_idx]][self.res_slt.text]
+    self.cnt_lbl.text = str(self.curr_idx + 1) + " / " + str(len(self.prog_list))
 
   def GetComparison(self, curr_plat, diff_plat):
     prog_no = self.prog_list[self.curr_idx]
@@ -185,6 +208,11 @@ class Analyzer(Screen):
         text = "[color=ff0000]Diff.[/color]"
     return text
 
+  def SwitchScreen(self):
+    to_remove = self.manager.current_screen
+    self.manager.current = "browser"
+    self.manager.remove_widget(to_remove)
+
 class ShowResultsApp(App):
   def build(self):
     Config.set("graphics", "width", width)
@@ -195,11 +223,8 @@ class ShowResultsApp(App):
     browser_instance.file_chooser.path = os.getcwd()
     browser_instance.file_chooser.filters = "os.path.isdir"
 
-    analyzer_instance = Analyzer(name="analyzer")
-
     sm = ScreenManager()
     sm.add_widget(browser_instance)
-    sm.add_widget(analyzer_instance)
     return sm
 
 if __name__ == "__main__":
