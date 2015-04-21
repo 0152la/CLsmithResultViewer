@@ -13,6 +13,7 @@ def ParseData(location = os.getcwd()):
 
     raw_contents = dict()
     contents = dict()
+    line_nos = dict()
 
     " Read raw contents from csv files"
     print("Reading results from files...")
@@ -33,6 +34,10 @@ def ParseData(location = os.getcwd()):
                 if program not in contents:
                     contents[program] = dict()
                 contents[program][platform] = []
+                if program not in line_nos:
+                    if "(" not in line:
+                        continue
+                    line_nos[program] = line.split("(")[1].split(")")[0]
             else:
                 contents[program][platform].append(line)
     raw_contents.clear()
@@ -83,4 +88,4 @@ def ParseData(location = os.getcwd()):
             sample[program] = curr_cand[0]
     vote.clear
 
-    return sample, contents
+    return sample, contents, line_nos

@@ -2,6 +2,7 @@
 
 from loadresults import ParseData
 import filterresults
+import outputresults
 
 import os
 import subprocess
@@ -44,6 +45,7 @@ class Analyzer(Screen):
   result_view = ObjectProperty(None)
   sample = dict()
   contents = dict()
+  line_nos = dict()
   curr_idx = 0
   prog_list = []
   plat_list = []
@@ -56,7 +58,7 @@ class Analyzer(Screen):
   cnt_lbl = ObjectProperty(None)
 
   def Initialize(self, path):
-    self.sample, self.contents = ParseData(path)
+    self.sample, self.contents, self.line_nos = ParseData(path)
     platforms = DropDown()
     for platform in sorted(self.contents.itervalues().next().keys()):
       btn = Button(text = platform, size_hint_y = None, height = 33)
@@ -67,7 +69,7 @@ class Analyzer(Screen):
     platforms.bind(on_select = lambda instance, x: setattr(self.plat_btn, 'text', x))
 
     test_filter = DropDown()
-    for filter_type in ["None", "Matching", "MatchingPlat"]:
+    for filter_type in ["None", "Matching", "MatchingPlat", "Matching+NoRes", "MatchingPlat+NoRes"]:
       btn = Button(text = filter_type, size_hint_y = None, height = 33)
       btn.bind(on_release = lambda btn: self.SetFilter(btn.text, test_filter))
       test_filter.add_widget(btn)
@@ -76,14 +78,13 @@ class Analyzer(Screen):
 
   def SetPlatform(self, platform, dropdown):
     dropdown.select(platform)
-    if self.filter_btn.text == "MatchingPlat":
-      self.prog_list = self.FilterProgs("MatchingPlat")
+    self.prog_list = self.FilterProgs(self.filter_btn.text)
     if self.res_plt:
-      self.prog_ipt.text = self.prog_list[0]
+      self.prog_ipt.text = self.ProgNameAndLines(self.prog_list[0])
       self.curr_idx = 0
-      self.ChangeResults("Sample")
+      self.ChangeResults()
     elif self.filter_btn.text != "Filter...":
-      self.prog_ipt.text = self.prog_list[0]
+      self.prog_ipt.text = self.ProgNameAndLines(self.prog_list[0])
       self.SetResults()
       self.curr_idx = 0
 
@@ -92,13 +93,16 @@ class Analyzer(Screen):
       dropdown.select(filter_type)
     self.prog_list = self.FilterProgs(filter_type)
     if self.res_plt:
-      self.prog_ipt.text = self.prog_list[0]
+      self.prog_ipt.text = self.ProgNameAndLines(self.prog_list[0])
       self.curr_idx = 0
-      self.ChangeResults("Sample")
+      self.ChangeResults()
     elif self.plat_btn.text != "Platform...":
-      self.prog_ipt.text = self.prog_list[0]
+      self.prog_ipt.text = self.ProgNameAndLines(self.prog_list[0])
       self.SetResults()
       self.curr_idx = 0
+
+  def ProgNameAndLines(self, prog):
+    return prog + " (" + str(self.line_nos[prog]) + ")"
 
   def GoPrev(self):
     if self.plat_btn.text == "Platform..." or self.filter_btn.text == "Filter...":
@@ -107,7 +111,7 @@ class Analyzer(Screen):
       self.curr_idx = len(self.prog_list) - 1
     else:
       self.curr_idx -= 1
-    self.prog_ipt.text = self.prog_list[self.curr_idx]
+    self.prog_ipt.text = self.ProgNameAndLines(self.prog_list[self.curr_idx])
     self.ChangeResults()
 
   def GoNext(self):
@@ -117,17 +121,17 @@ class Analyzer(Screen):
       self.curr_idx = 0
     else:
       self.curr_idx += 1
-    self.prog_ipt.text = self.prog_list[self.curr_idx]
+    self.prog_ipt.text = self.ProgNameAndLines(self.prog_list[self.curr_idx])
     self.ChangeResults()
 
   def GoProg(self, prog):
     if not prog.endswith(".cl"):
         prog += ".cl"
     if not prog in self.prog_list:
-        self.prog_ipt.text = self.prog_list[self.curr_idx]
+        self.prog_ipt.text = self.ProgNameAndLines(self.prog_list[self.curr_idx])
     else:
         self.curr_idx = self.prog_list.index(prog)
-        self.prog_ipt.text = prog
+        self.prog_ipt.text = self.ProgNameAndLines(prog)
         self.ChangeResults()
 
   def FilterProgs(self, filter_type):
@@ -137,6 +141,10 @@ class Analyzer(Screen):
         return filterresults.FilterMatching(self.sample, self.contents, self.plat_btn.text)
     elif filter_type == "MatchingPlat":
         return filterresults.FilterPlat(self.contents, self.plat_btn.text, self.res_plt)
+    elif filter_type == "Matching+NoRes" or (filter_type == "MatchingPlat+NoRes" and self.res_plt in ["Sample", ""]):
+        return filterresults.FilterMatching(self.sample, self.contents, self.plat_btn.text, True)
+    elif filter_type == "MatchingPlat+NoRes":
+        return filterresults.FilterPlat(self.contents, self.plat_btn.text, self.res_plt, True)
 
   def SetResults(self):
     plat_select = DropDown()
@@ -157,7 +165,7 @@ class Analyzer(Screen):
     btn_layout_bot = BoxLayout(orientation = "horizontal", size_hint_y = None, height = 33)
     cnt_lbl = Label(text = str(self.curr_idx + 1) + " / " + str(len(self.prog_list)), size_hint_x = 0.5)
     gen_btn = Button(text = "Output HTML", size_hint_x = 0.25)
-    gen_btn.bind(on_release = lambda btn: filterresults.OutputHTML(self.prog_list, self.sample, self.contents))
+    gen_btn.bind(on_release = lambda btn: outputresults.OutputHTML(self.plat_list, self.prog_list, self.sample, self.contents))
     back_btn = Button(text = "Back", size_hint_x = 0.25)
     back_btn.bind(on_release = lambda btn: self.SwitchScreen())
     btn_layout_bot.add_widget(cnt_lbl)
@@ -185,7 +193,7 @@ class Analyzer(Screen):
         self.res_slt.text = diff_plat
         if self.filter_btn.text == "MatchingPlat":
             self.prog_list = self.FilterProgs("MatchingPlat")
-            self.prog_ipt.text = self.prog_list[0]
+            self.prog_ipt.text = self.ProgNameAndLines(self.prog_list[0])
             self.curr_idx = 0
     self.res_cmp.text = self.GetComparison(self.plat_btn.text, self.res_plt)
     self.res_ipt.text = self.contents[self.prog_list[self.curr_idx]][self.plat_btn.text]
