@@ -2,7 +2,7 @@
 A GUI to be used with the .csv files obtained from CLsmith testing.
 
 ### Requirements
-* Python 2.7 (not 3.0)
+* Python 2.7
 * Kivy library (on Ubuntu, install the **python-kivy** package)
 
 ### Usage
@@ -16,4 +16,5 @@ A quick rundown of the comparison view window:
 * The name of the currently inspected program is in the text box at the top, with the number of lines in parantheses. A specific program can be investigate by typing in its name in this box.
 
 ### TODOs and issues
-* **Output HTML** button is currently a dummy button
+* **Output HTML** button is currently a dummy button.
+* Possibly a textbox to select a specific program index, rather than only having to give the name.
